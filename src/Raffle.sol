@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {IVRFCoordinatorV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {console} from "forge-std/Test.sol";
 
 /**
  * @title A sample Raffle Contract
@@ -24,7 +25,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     /** type declaraction**/
     enum RaffleState {
         OPEN,
-        CACLUATING
+        CALCUATING
     }
 
     /** state variables **/
@@ -47,6 +48,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     event EnteredRaffle(address indexed player);
     event Pickedwinner(address indexed winner);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
     constructor(
         uint256 enteramceFee,
@@ -68,7 +70,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     function enterRaffle() external payable {
         // require(msg.value >= i_enteranceFee, "Not enough ETH sent!");
         // save gas way using custom error
-        if (msg.value >= i_enteranceFee) {
+        if (msg.value < i_enteranceFee) {
             revert Raffle__NotEnoughETHSent();
         }
         if (RaffleState.OPEN != s_raffleState) {
@@ -82,13 +84,17 @@ contract Raffle is VRFConsumerBaseV2Plus {
         emit EnteredRaffle(msg.sender);
     }
 
-    // CEI: Checks , Effects, Interactions
+    /* CEI: Checks , Effects, Interactions
+     * @dev Pick up the winner fandomly.
+     * @param randomWords random generated number from VRF
+     */
     function fulfillRandomWords(
         uint256 /* requestId */,
         uint256[] calldata randomWords
     ) internal override {
-        // Effects
+        // Checks
         address payable[] memory players = s_players;
+        // Effects
         uint256 indexOfWinner = randomWords[0] % players.length;
         address payable winner = players[indexOfWinner];
         s_recentWinner = winner;
@@ -105,7 +111,6 @@ contract Raffle is VRFConsumerBaseV2Plus {
         }
     }
 
-    //
     /**
      * @dev To tell chainlink automation when is the time to call performUpkeep
      * The follwing should be true for RaffleState to return true
@@ -141,9 +146,9 @@ contract Raffle is VRFConsumerBaseV2Plus {
             );
         }
         // check to see if enough time has passed
-        s_raffleState = RaffleState.CACLUATING;
+        s_raffleState = RaffleState.CALCUATING;
         /* uint256 requestId =*/
-        s_vrfCoordinator.requestRandomWords(
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: i_gasLane,
                 subId: i_subscriptionId,
@@ -155,10 +160,31 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 )
             })
         );
+        emit RequestedRaffleWinner(requestId);
     }
 
     /** Getter Function  */
-    function getEnteranceFee() public view returns (uint256) {
+    function getEnteranceFee() external view returns (uint256) {
         return i_enteranceFee;
+    }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getPlayer(uint256 index) external view returns (address) {
+        return s_players[index];
+    }
+
+    function getLengthofPlayers() external view returns (uint256) {
+        return s_players.length;
+    }
+
+    function getRecentWinner() external view returns (address) {
+        return s_recentWinner;
+    }
+
+    function getLastTimestamp() external view returns (uint256) {
+        return s_lastTimestamp;
     }
 }

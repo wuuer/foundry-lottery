@@ -18,6 +18,23 @@ This code is to create a proveably random smart contract lottery.
 
 1. write some deploy scripts
 2. Write our tests
-   1. Work on a local chain
-   2. Forked Testnet
+
+   setup environment variables
+
+   ```bash
+   source .env
+   ```
+
+   test on a local chain
+
+   ```bash
+   forge test
+   ```
+
+   test on a forked Testnet
+
+   ```bash
+   forge test --fork-url $SEPOLIA_RPC_URL
+   ```
+
    3. Forked mainnet
